@@ -305,3 +305,80 @@ npm run dev
 ```
 
 Your vanilla Three.js game with VIVERSE integration is now complete! You should see a 3D environment with a controllable character that displays a floating player tag with the user's avatar and name.
+
+## Advanced: Customizing Input Controls
+
+You can customize the character's input controls by providing options to the `SimpleCharacter` constructor:
+
+### Keyboard Key Customization
+
+```typescript
+import { LocomotionKeyboardInput, PointerCaptureInput } from '@pmndrs/viverse'
+
+const character = new SimpleCharacter(camera, world, canvas, {
+  input: [LocomotionKeyboardInput, PointerCaptureInput],
+  inputOptions: {
+    // Custom keyboard mappings
+    keyboardMoveForwardKeys: ['KeyW', 'ArrowUp'],
+    keyboardMoveBackwardKeys: ['KeyS', 'ArrowDown'],
+    keyboardMoveLeftKeys: ['KeyA', 'ArrowLeft'],
+    keyboardMoveRightKeys: ['KeyD', 'ArrowRight'],
+    keyboardJumpKeys: ['Space', 'KeyJ'],
+    keyboardRunKeys: ['ShiftLeft', 'ShiftRight'],
+    
+    // Adjust camera sensitivity
+    pointerCaptureRotationSpeed: 0.6,
+    pointerCaptureZoomSpeed: 0.0002,
+  }
+})
+```
+
+### Using Pointer Lock for First-Person
+
+```typescript
+import { LocomotionKeyboardInput, PointerLockInput } from '@pmndrs/viverse'
+
+// Request pointer lock on canvas click
+canvas.addEventListener('click', () => {
+  canvas.requestPointerLock()
+})
+
+const character = new SimpleCharacter(camera, world, canvas, {
+  model: false, // Hide the character model in first-person
+  input: [LocomotionKeyboardInput, PointerLockInput],
+  inputOptions: {
+    pointerLockRotationSpeed: 0.5,
+  }
+})
+```
+
+### Mobile Controls Customization
+
+```typescript
+import { ScreenJoystickInput, ScreenJumpButtonInput, PointerCaptureInput, LocomotionKeyboardInput } from '@pmndrs/viverse'
+
+const character = new SimpleCharacter(camera, world, canvas, {
+  input: [ScreenJoystickInput, ScreenJumpButtonInput, PointerCaptureInput, LocomotionKeyboardInput],
+  inputOptions: {
+    screenJoystickDeadZonePx: 30,
+    screenJoystickRunDistancePx: 50,
+  }
+})
+
+// Customize mobile UI appearance via CSS
+const style = document.createElement('style')
+style.textContent = `
+  .viverse-joystick {
+    bottom: 40px !important;
+    left: 40px !important;
+    background: rgba(100, 150, 255, 0.3) !important;
+  }
+  .viverse-jump {
+    bottom: 50px !important;
+    right: 50px !important;
+    background: rgba(255, 100, 100, 0.4) !important;
+  }
+`
+document.head.appendChild(style)
+```
+
