@@ -79,22 +79,52 @@ Adds visible children as static (non-moving) or kinematic (moving) objects as ob
 
 ### `<BvhPhysicsSensor>`
 
-Adds visible children as static (non-moving) or kinematic (moving) objects as obstacles to the physics world.
+Adds visible children as sensors to the physics world. Sensors detect when the player character intersects with them without blocking movement.
 
 > [!WARNING]
-> Content inside the object can not structurally change; Hiding the sensors content requires to wrap it in `<group visible={false}>...</group>`.
+> Content inside the sensor cannot structurally change. Hiding the sensor's content requires wrapping it in `<group visible={false}>...</group>`.
 
 **Props:**
 
-- `children?: ReactNode` - Static mesh objects for collision
-- `isStatic?: boolean` - whether the objects world transformation is static - default: true
-- `onIntersectedChanged?: (intersected: boolean) => void` - callback that get's called when the player starts or stops intersecting with the sensor
+- `children?: ReactNode` - Mesh objects that define the sensor area
+- `isStatic?: boolean` - Whether the sensor's world transformation is static (default: `true`)
+- `onIntersectedChanged?: (intersected: boolean) => void` - Callback invoked when the player starts or stops intersecting with the sensor
+
+**Use Cases:**
+- Trigger zones (door openers, checkpoint areas)
+- Collectible item detection
+- Environmental effects (entering water, lava, etc.)
+- Quest area boundaries
 
 **Example:**
 
 ```tsx
-<BvhPhysicsSensor onIntersectedChanged={(intersected) => console.log("currently intersected": intersected)}>
-  <mesh visible={false}>
+<BvhPhysicsSensor 
+  isStatic={true}
+  onIntersectedChanged={(intersected) => {
+    console.log("Player in zone:", intersected)
+  }}
+>
+  <group visible={false}>
+    <mesh>
+      <boxGeometry args={[5, 3, 5]} />
+    </mesh>
+  </group>
+</BvhPhysicsSensor>
+```
+
+**Moving Sensor Example:**
+
+```tsx
+<BvhPhysicsSensor 
+  isStatic={false}
+  onIntersectedChanged={(intersected) => {
+    if (intersected) {
+      console.log("Player touched moving platform!")
+    }
+  }}
+>
+  <mesh position={[0, Math.sin(Date.now() / 1000) * 2, 0]}>
     <boxGeometry />
   </mesh>
 </BvhPhysicsSensor>
@@ -115,21 +145,27 @@ A quick prototyping component that renders a textured box with the prototype mat
 <PrototypeBox position={[0, 1, 0]} scale={[2, 1, 3]} color="red" />
 ```
 
-### `<VrmCharacterModelBone>`
+### `<CharacterModelBone>`
 
-Component for placing content inside the in VRM character models.
+Component for placing content inside character models (works with both VRM and GLTF models).
 
 **Props:**
 
-- `bone: VRMHumanBoneName` - The bone name to access
+- `bone: VRMHumanBoneName` - The bone name to access (uses VRM bone naming convention)
+- `children?: ReactNode` - Child components to attach to the bone
+
+**Example:**
 
 ```tsx
 <SimpleCharacter>
-  <VrmCharacterModelBone bone="rightHand">
+  <CharacterModelBone bone="rightHand">
     <SwordModel />
-  </VrmCharacterModelBone>
+  </CharacterModelBone>
 </SimpleCharacter>
 ```
+
+> [!NOTE]
+> This component works with both VRM models and GLTF models that follow the VRM bone naming convention.
 
 ## Hooks
 
@@ -199,10 +235,102 @@ Either a array of `Input` objects or a custom `InputSystem`
 **Available Input Classes provided by @pmndrs/viverse:**
 
 - `LocomotionKeyboardInput` - WASD movement, Space for jump, Shift for run
+  - **Options:**
+    - `keyboardMoveForwardKeys?: string[]` - Keys for forward movement (default: `['KeyW']`)
+    - `keyboardMoveBackwardKeys?: string[]` - Keys for backward movement (default: `['KeyS']`)
+    - `keyboardMoveLeftKeys?: string[]` - Keys for left movement (default: `['KeyA']`)
+    - `keyboardMoveRightKeys?: string[]` - Keys for right movement (default: `['KeyD']`)
+    - `keyboardRunKeys?: string[]` - Keys for running (default: `['ShiftRight', 'ShiftLeft']`)
+    - `keyboardJumpKeys?: string[]` - Keys for jumping (default: `['Space']`)
+  - **Example:**
+    ```tsx
+    <SimpleCharacter
+      inputOptions={{
+        keyboardMoveForwardKeys: ['KeyW', 'ArrowUp'],
+        keyboardJumpKeys: ['Space', 'KeyJ']
+      }}
+    />
+    ```
+
 - `PointerCaptureInput` - Mouse look with pointer capture (requires manual `setPointerCapture`)
+  - **Options:**
+    - `pointerCaptureRotationSpeed?: number` - Camera rotation sensitivity (default: `0.4`)
+    - `pointerCaptureZoomSpeed?: number` - Zoom sensitivity for mouse wheel (default: `0.0001`)
+  - **Features:**
+    - Single-finger/mouse drag for camera rotation
+    - Two-finger pinch for zoom on touch devices
+    - Mouse wheel zoom support
+  - **Example:**
+    ```tsx
+    <SimpleCharacter
+      inputOptions={{
+        pointerCaptureRotationSpeed: 0.6,
+        pointerCaptureZoomSpeed: 0.0002
+      }}
+    />
+    ```
+
 - `PointerLockInput` - Mouse look with pointer lock (requires manual `requestPointerLock`)
-- `ScreenJoystickInput` - On-screen joystick for movement and run (mobile). Options: `{ screenJoystickDeadZonePx?, screenJoystickRunDistancePx? }`
-- `ScreenJumpButtonInput` - On-screen jump button (mobile-only). Visible only on mobile.
+  - **Options:**
+    - `pointerLockRotationSpeed?: number` - Camera rotation sensitivity (default: `0.4`)
+    - `pointerLockZoomSpeed?: number` - Zoom sensitivity for mouse wheel (default: `0.0001`)
+  - **Features:**
+    - Unlimited mouse movement (cursor is hidden and locked)
+    - Mouse wheel zoom support
+  - **Usage:** Call `domElement.requestPointerLock()` on user interaction
+  - **Example:**
+    ```tsx
+    <Canvas onClick={(e) => (e.target as HTMLElement).requestPointerLock()}>
+      <SimpleCharacter input={[PointerLockInput, LocomotionKeyboardInput]} />
+    </Canvas>
+    ```
+
+- `ScreenJoystickInput` - On-screen joystick for movement and run (mobile)
+  - **Options:**
+    - `screenJoystickDeadZonePx?: number` - Dead zone radius in pixels (default: `24`)
+    - `screenJoystickRunDistancePx?: number` - Distance threshold for running in pixels (default: `46`)
+  - **Features:**
+    - Automatically hidden on non-mobile devices (CSS `.mobile-only` class)
+    - Positioned bottom-left by default
+    - Customizable via CSS targeting `.viverse-joystick` class
+  - **Example:**
+    ```tsx
+    <SimpleCharacter
+      inputOptions={{
+        screenJoystickDeadZonePx: 30,
+        screenJoystickRunDistancePx: 50
+      }}
+    />
+    ```
+
+- `ScreenJumpButtonInput` - On-screen jump button (mobile-only)
+  - **Features:**
+    - Automatically hidden on non-mobile devices
+    - Positioned bottom-right by default
+    - Customizable via CSS targeting `.viverse-jump` class
+  - **No configurable options**
+
+**Customizing Mobile UI:**
+
+You can customize the appearance and position of mobile controls using CSS:
+
+```css
+/* Customize joystick position and appearance */
+.viverse-joystick {
+  bottom: 40px !important;
+  left: 40px !important;
+  width: 140px !important;
+  height: 140px !important;
+  background: rgba(100, 150, 255, 0.3) !important;
+}
+
+/* Customize jump button */
+.viverse-jump {
+  bottom: 50px !important;
+  right: 50px !important;
+  background: rgba(255, 100, 100, 0.4) !important;
+}
+```
 
 ### `model` Options
 
@@ -220,7 +348,8 @@ Either a array of `Input` objects or a custom `InputSystem`
 - **capsuleHeight:** `number` - Character collision capsule height (default: `1.7`)
 - **gravity:** `number` - Gravity acceleration in m/s² (default: `-20`)
 - **linearDamping:** `number` - Air resistance coefficient (default: `0.1`)
-- **maxGroundSlope:** `number` - Max slope for a collider to be detected as a walkable ground (default: `1` which equals to 45°)
+- **maxGroundSlope:** `number` - Max slope tangent value for a collider to be detected as a walkable ground (default: `0.5`, approximately 26.6°)
+- **updatesPerSecond:** `number` - Physics update rate (default: `60`)
 
 ### `cameraBehavior` Options
 
