@@ -56,6 +56,9 @@ export function BvhPhysicsWorld({ children }: { children?: ReactNode }) {
 
 const PreloadSimpleCharacterAssetsSymbol = Symbol('preload-simple-character-assets')
 
+// Generate a unique ID for each SimpleCharacter instance
+let characterInstanceId = 0
+
 /**
  * creates a simple character controller supporting running, walking, and jumping with a default avatar and animations with can be configutred
  */
@@ -84,6 +87,8 @@ export const SimpleCharacter = forwardRef<
       throw new Error('SimpleCharacter must be used within a BvhPhysicsWorld component')
     }
     const domElement = useThree((s) => s.gl.domElement)
+    // Generate a unique instance ID for this character
+    const instanceId = useMemo(() => `character-${characterInstanceId++}`, [])
     const newOptions = {
       inputOptions,
       movement,
@@ -100,6 +105,7 @@ export const SimpleCharacter = forwardRef<
           : model,
     } satisfies SimpleCharacterOptions
     const preloadSimpleCharacterAssetsKeys = [
+      instanceId, // Add unique instance ID to cache key
       JSON.stringify(newOptions.model),
       ...simpleCharacterAnimationNames.map((name) => JSON.stringify(newOptions.animation?.[name])),
     ]
